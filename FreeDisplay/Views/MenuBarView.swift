@@ -62,6 +62,16 @@ struct ExpandableRow: View {
     }
 }
 
+/// Reports the natural height of the scrolled content so the ScrollView can be sized
+/// explicitly. A bare ScrollView inside a MenuBarExtra window has no intrinsic height and
+/// can collapse to nothing on recent macOS versions.
+private struct ContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct MenuBarView: View {
     @EnvironmentObject var displayManager: DisplayManager
     @ObservedObject private var updateService = UpdateService.shared
@@ -73,6 +83,7 @@ struct MenuBarView: View {
     @State private var showAutoBrightness: Bool = false
     @State private var showSettings: Bool = false
     @State private var quitHovered = false
+    @State private var contentHeight: CGFloat = 0
 
     private var visibleDisplays: [DisplayInfo] {
         displayManager.displays.filter { !virtualDisplayService.isVirtualDisplay($0.displayID) }
@@ -226,7 +237,14 @@ struct MenuBarView: View {
                 }
 
             }
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(key: ContentHeightKey.self, value: proxy.size.height)
+                }
+            )
         }
+        .frame(height: min(max(contentHeight, 120), 640))
+        .onPreferenceChange(ContentHeightKey.self) { contentHeight = $0 }
 
         Divider().opacity(0.3)
 
