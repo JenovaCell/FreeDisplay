@@ -16,7 +16,7 @@ struct AutoBrightnessView: View {
             HStack {
                 MenuItemIcon(systemName: "sun.max.trianglebadge.exclamationmark", color: service.isEnabled ? .orange : .secondary)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("自动亮度")
+                    Text("Auto Brightness")
                         .font(.body)
                     Text(statusText)
                         .font(.caption2)
@@ -39,11 +39,11 @@ struct AutoBrightnessView: View {
 
     private var statusText: String {
         if builtinUnavailable {
-            return "未检测到内建显示屏"
+            return "Built-in display not detected"
         } else if service.isEnabled {
-            return "跟随内建屏亮度同步中"
+            return "Syncing with built-in display brightness"
         } else {
-            return "跟随内建屏亮度调整外接显示器"
+            return "Adjusting external displays to follow built-in display brightness"
         }
     }
 }

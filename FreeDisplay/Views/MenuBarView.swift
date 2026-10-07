@@ -55,10 +55,10 @@ struct ExpandableRow: View {
             }
         }
         .onHover { isHovered = $0 }
-        .accessibilityLabel(isExpanded ? "\(label)，已展开" : "\(label)，已折叠")
-        .accessibilityHint("点击展开或折叠此部分")
+        .accessibilityLabel(isExpanded ? "\(label), expanded" : "\(label), collapsed")
+        .accessibilityHint("Click to expand or collapse this section")
         .accessibilityAddTraits(.isButton)
-        .help("点击展开或折叠此部分")
+        .help("Click to expand or collapse this section")
     }
 }
 
@@ -130,7 +130,7 @@ struct MenuBarView: View {
                     ExpandableRow(
                         icon: "rectangle.3.offgrid",
                         iconColor: .blue,
-                        label: "排列显示器",
+                        label: "Arrange Displays",
                         isExpanded: $showArrangement
                     )
 
@@ -154,7 +154,7 @@ struct MenuBarView: View {
                 }
 
                 // 工具区标题
-                Text("工具")
+                Text("Tools")
                     .font(.caption2)
                     .fontWeight(.semibold)
                     .foregroundColor(.secondary)
@@ -166,7 +166,7 @@ struct MenuBarView: View {
                 ExpandableRow(
                     icon: "display.2",
                     iconColor: .blue,
-                    label: "虚拟显示器",
+                    label: "Virtual Displays",
                     isExpanded: $showVirtualDisplays
                 )
 
@@ -180,7 +180,7 @@ struct MenuBarView: View {
                 ExpandableRow(
                     icon: "sun.and.horizon.fill",
                     iconColor: .orange,
-                    label: "自动亮度",
+                    label: "Auto Brightness",
                     isExpanded: $showAutoBrightness
                 )
 
@@ -198,7 +198,7 @@ struct MenuBarView: View {
                 ExpandableRow(
                     icon: "gearshape.fill",
                     iconColor: .gray,
-                    label: "设置",
+                    label: "Settings",
                     isExpanded: $showSettings
                 )
 
@@ -219,15 +219,15 @@ struct MenuBarView: View {
                             .foregroundColor(.green)
                             .frame(width: 20)
                             .accessibilityHidden(true)
-                        Text("新版本 v\(ver) 可用")
+                        Text("Version v\(ver) available")
                             .font(.caption)
                             .foregroundColor(.green)
                         Spacer()
-                        Button("查看") { updateService.openReleasePage() }
+                        Button("View") { updateService.openReleasePage() }
                             .buttonStyle(.plain)
                             .font(.caption)
                             .foregroundColor(.blue)
-                            .help("下载并安装最新版本")
+                            .help("Download and install the latest version")
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 5)
@@ -261,7 +261,7 @@ struct MenuBarView: View {
                 HStack(spacing: 3) {
                     Image(systemName: "xmark")
                         .accessibilityHidden(true)
-                    Text("退出")
+                    Text("Quit")
                 }
                 .font(.body)
                 .padding(.horizontal, 8)
@@ -273,7 +273,7 @@ struct MenuBarView: View {
             .buttonStyle(.plain)
             .foregroundColor(quitHovered ? .red : .secondary)
             .onHover { quitHovered = $0 }
-            .help("退出 FreeDisplay")
+            .help("Quit FreeDisplay")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -316,14 +316,14 @@ struct SettingsView: View {
                 HStack(spacing: 6) {
                     MenuItemIcon(systemName: "power", color: .green)
                         .accessibilityHidden(true)
-                    Text("开机自动启动")
+                    Text("Launch at Login")
                         .font(.body)
                 }
             }
             .toggleStyle(.switch)
             .controlSize(.small)
             .padding(.horizontal, 12)
-            .help("登录时自动启动 FreeDisplay")
+            .help("Launch FreeDisplay automatically at login")
 
             // 首次启动提示：建议开启开机自启
             if !settings.launchAtLoginPrompted {
@@ -332,11 +332,11 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                         .frame(width: 16)
                         .accessibilityHidden(true)
-                    Text("建议开启开机自动启动")
+                    Text("Launching at login is recommended")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
-                    Button("知道了") {
+                    Button("Got it") {
                         settings.launchAtLoginPrompted = true
                     }
                     .buttonStyle(.borderless)
@@ -355,28 +355,28 @@ struct SettingsView: View {
                 HStack(spacing: 6) {
                     MenuItemIcon(systemName: "sun.min.fill", color: .yellow)
                         .accessibilityHidden(true)
-                    Text("显示组合亮度控制")
+                    Text("Show combined brightness control")
                         .font(.body)
                 }
             }
             .toggleStyle(.switch)
             .controlSize(.small)
             .padding(.horizontal, 12)
-            .help("在菜单栏显示所有显示器的统一亮度滑块")
+            .help("Show a unified brightness slider for all displays in the menu bar")
 
             // 启动时检查更新
             Toggle(isOn: $settings.checkUpdatesOnLaunch) {
                 HStack(spacing: 6) {
                     MenuItemIcon(systemName: "arrow.clockwise.circle", color: .blue)
                         .accessibilityHidden(true)
-                    Text("启动时检查更新")
+                    Text("Check for updates at launch")
                         .font(.body)
                 }
             }
             .toggleStyle(.switch)
             .controlSize(.small)
             .padding(.horizontal, 12)
-            .help("每次启动时自动检查是否有新版本可用")
+            .help("Automatically check for new versions each time the app launches")
         }
         .padding(.vertical, 6)
     }
@@ -416,7 +416,7 @@ struct DisplayRowView: View {
                     }
                 }
                 if display.isMain {
-                    Text("主屏")
+                    Text("Main")
                         .font(.caption2)
                         .foregroundColor(.blue)
                         .padding(.horizontal, 4)
@@ -428,7 +428,7 @@ struct DisplayRowView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture { onToggleExpand() }
-            .help("展开显示器控制面板")
+            .help("Expand display controls")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -441,7 +441,7 @@ struct DisplayRowView: View {
                     NSWorkspace.shared.open(url)
                 }
             } label: {
-                Label("在系统设置中打开", systemImage: "display")
+                Label("Open in System Settings", systemImage: "display")
             }
 
             Divider()
@@ -450,11 +450,11 @@ struct DisplayRowView: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(display.name, forType: .string)
             } label: {
-                Label("复制显示器名称", systemImage: "doc.on.doc")
+                Label("Copy Display Name", systemImage: "doc.on.doc")
             }
         }
-        .accessibilityLabel("显示器：\(display.name)\(display.isMain ? "，主显示器" : "")\(isExpanded ? "，已展开" : "，已折叠")")
-        .accessibilityHint("点击展开控制面板")
+        .accessibilityLabel("Display: \(display.name)\(display.isMain ? ", main display" : "")\(isExpanded ? ", expanded" : ", collapsed")")
+        .accessibilityHint("Click to expand controls")
         .accessibilityAddTraits(.isButton)
     }
 }
