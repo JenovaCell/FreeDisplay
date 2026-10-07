@@ -131,16 +131,6 @@ final class PresetService: ObservableObject, @unchecked Sendable {
                 )
                 anyActionTaken = true
             }
-
-            // Set arrangement position if specified
-            if let x = entry.arrangementX, let y = entry.arrangementY {
-                print("[PresetService]   -> setting arrangement x=\(x) y=\(y)")
-                let ok = await ArrangementService.shared.setPosition(
-                    x: Int(x), y: Int(y), for: displayID
-                )
-                print("[PresetService]   -> setPosition result: \(ok)")
-                anyActionTaken = true
-            }
         }
 
         print("[PresetService] applyPreset '\(preset.name)' complete. anyActionTaken=\(anyActionTaken)")
@@ -161,8 +151,8 @@ final class PresetService: ObservableObject, @unchecked Sendable {
                 height: mode?.height ?? display.pixelHeight,
                 isHiDPI: mode?.isHiDPI ?? false,
                 brightness: display.brightness / 100.0,
-                arrangementX: display.bounds.origin.x,
-                arrangementY: display.bounds.origin.y
+                arrangementX: nil,
+                arrangementY: nil
             )
         }
         return DisplayPreset(name: name, icon: icon, displays: entries)

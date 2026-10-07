@@ -25,9 +25,6 @@ private func displayReconfigCallback(
         } else {
             manager.refreshDisplays()
         }
-
-        // Auto-rearrange after any display config change completes (debounced 500 ms).
-        manager.scheduleAutoArrange()
     }
 }
 
@@ -37,9 +34,6 @@ class DisplayManager: ObservableObject {
 
     // nonisolated(unsafe) allows deinit (which is nonisolated in Swift 6) to access this value.
     nonisolated(unsafe) private var callbackContext: UnsafeMutableRawPointer?
-
-    /// Work item used to debounce auto-arrange calls triggered by display config changes.
-    private var autoArrangeWorkItem: DispatchWorkItem?
 
     init() {
         refreshDisplays()
@@ -98,7 +92,7 @@ class DisplayManager: ObservableObject {
             Task {
                 await display.loadDetails()
                 // Auto-enable HiDPI for new external 2K+ displays that don't have it yet
-                if !display.isBuiltin {
+                if !display.isBuiltin, !VirtualDisplayService.shared.isVirtualDisplay(display.displayID) {
                     await self.autoEnableHiDPIIfNeeded(for: display)
                 }
                 PresetService.shared.refreshBuiltins()
@@ -158,17 +152,6 @@ class DisplayManager: ObservableObject {
         }
     }
 
-    /// Debounces calls to `arrangeExternalAboveBuiltin()` — coalesces bursts of config-change
-    /// callbacks into a single rearrange that fires 500 ms after the last callback arrives.
-    func scheduleAutoArrange() {
-        autoArrangeWorkItem?.cancel()
-        let item = DispatchWorkItem { [weak self] in
-            self?.arrangeExternalAboveBuiltin()
-        }
-        autoArrangeWorkItem = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: item)
-    }
-
     private func setupReconfigCallback() {
         let ctx = Unmanaged.passRetained(self).toOpaque()
         callbackContext = ctx
@@ -199,40 +182,5 @@ class DisplayManager: ObservableObject {
     func toggleDisplay(_ display: DisplayInfo) -> Bool {
         // No-op: cannot enable/disable displays via public API
         return false
-    }
-
-    /// Makes the target display the main display by repositioning it to origin (0, 0).
-    func setAsMainDisplay(_ display: DisplayInfo) {
-        Task { @MainActor in
-            let ok = await ArrangementService.shared.setAsMainDisplay(display.displayID, among: self.displays)
-            if ok { self.refreshDisplays() }
-        }
-    }
-
-    /// Positions all external displays above the built-in display, centered horizontally.
-    /// Controlled by the UserDefaults key `fd.arrangement.externalAbove`.
-    /// Does nothing if there is no built-in display or no external displays.
-    func arrangeExternalAboveBuiltin() {
-        guard UserDefaults.standard.bool(forKey: "fd.arrangement.externalAbove") else { return }
-
-        guard let builtin = displays.first(where: { $0.isBuiltin }) else { return }
-        let externals = displays.filter { !$0.isBuiltin }
-        guard !externals.isEmpty else { return }
-
-        let builtinX = Int(builtin.bounds.origin.x)
-        let builtinY = Int(builtin.bounds.origin.y)
-        let builtinWidth = Int(builtin.bounds.width)
-
-        let arrangeItems = externals.map { ext in
-            let extWidth = Int(ext.bounds.width)
-            let centeredX = builtinX + (builtinWidth - extWidth) / 2
-            return (id: ext.displayID, x: centeredX, y: builtinY - Int(ext.bounds.height))
-        }
-        Task { @MainActor in
-            for item in arrangeItems {
-                await ArrangementService.shared.setPosition(x: item.x, y: item.y, for: item.id)
-            }
-            self.refreshDisplays()
-        }
     }
 }

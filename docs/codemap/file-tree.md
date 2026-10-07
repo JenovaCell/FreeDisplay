@@ -44,7 +44,6 @@ FreeDisplay/
 │   │   ├── DisplayMode.swift       # 单个显示模式（分辨率+刷新率+HiDPI 标志）的值类型；枚举逻辑改动影响分辨率切换和模式列表展示
 │   │   └── DisplayPreset.swift     # 显示器配置预设模型：DisplayPreset（预设）+ DisplayPresetEntry（单显示器快照）；Codable，由 PresetService 持久化
 │   ├── Services/                   # 业务逻辑层，与系统框架直接交互
-│   │   ├── ArrangementService.swift        # 通过 CGDisplayConfiguration 读写显示器位置，支持设为主显示器；setPosition/setAsMainDisplay 已异步化，CG 事务在 CGHelpers.runWithTimeout 内执行；改动影响拖拽排列和主显示器切换
 │   │   ├── AutoBrightnessService.swift     # 读取 IOKit AppleLMUController 环境光传感器，定时轮询映射 lux→亮度；改动影响自动亮度精度和电池消耗
 │   │   ├── BrightnessService.swift         # 统一亮度接口：内建屏用 IODisplayGetFloatParameter，外接屏用 DDC VCP 0x10；改动影响所有亮度读写路径
 │   │   ├── CGHelpers.swift                 # 共享 CG 阻塞调用工具：CGHelpers.runWithTimeout(seconds:fallback:operation:) 在后台线程以超时保护运行 WindowServer IPC 阻塞操作；被 ArrangementService、MirrorService、ResolutionService、VirtualDisplayService 使用
@@ -65,14 +64,12 @@ FreeDisplay/
 │   │   └── NSScreenExtension.swift         # NSScreen 扩展：按 CGDirectDisplayID 查找 NSScreen，获取 displayID；被 NotchView、NotchOverlayManager 依赖
 │   ├── FreeDisplay-Bridging-Header.h       # 私有 API 声明：CGVirtualDisplay（macOS 14+）和 IOAVService（Apple Silicon DDC）；属性名已对照 Chromium 源码验证（maxPixelsWide/maxPixelsHigh 非 maxPixelSize）
 │   └── Views/                      # SwiftUI 视图层
-│       ├── ArrangementView.swift           # 多显示器拖拽排列画布（内外屏缩略图区分）+ 设为主显示器按钮；依赖 ArrangementService
 │       ├── AutoBrightnessView.swift        # 自动亮度开关 + 灵敏度滑块 + 环境光 lux 显示；依赖 AutoBrightnessService
 │       ├── BrightnessSliderView.swift      # 单显示器亮度滑块（200ms 去抖）+ 全局组合亮度控制；依赖 BrightnessService + DDCService
 │       ├── ColorProfileView.swift          # ICC Profile 列表（推荐/全部分组）和切换；依赖 ColorProfileService
 │       ├── DisplayDetailView.swift         # ⚠️ 每显示器展开面板，可折叠 Section 的容器（三组分组）；新增/删除 Section 都要改此文件，且需同步 MenuBarView
 │       ├── DisplayModeListView.swift       # 分辨率模式列表（HiDPI/原生/其他分组）、收藏置顶星标、点击切换；依赖 ResolutionService
 │       ├── ImageAdjustmentView.swift       # 11 个图像调整滑块（对比度/Gamma/增益/色温/各通道/量化/反色）；依赖 GammaService
-│       ├── MainDisplayView.swift           # "设为主显示屏"行，当前已是主屏时显示状态标签；依赖 ArrangementService
 │       ├── MenuBarView.swift               # ⚠️ 菜单栏主视图：显示器列表 + 展开/折叠 + 工具区 + 设置区 + PresetListView；是所有功能的入口容器，改动影响全局布局
 │       ├── NotchView.swift                 # 刘海信息显示 + 遮罩开关（仅有刘海的内建屏显示）；依赖 NotchOverlayManager
 │       ├── ResolutionSliderView.swift      # 分辨率横向拖动滑块（松手生效）；依赖 ResolutionService，读取 DisplayInfo.availableModes

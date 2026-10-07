@@ -99,9 +99,6 @@ struct DisplayDetailView: View {
 
             Divider().opacity(0.3).padding(.vertical, 2)
 
-            // Set as main display
-            MainDisplayView(display: display)
-
             // Notch management (built-in with notch only)
             NotchView(display: display)
 

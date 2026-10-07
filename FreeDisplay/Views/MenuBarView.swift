@@ -78,7 +78,6 @@ struct MenuBarView: View {
     @ObservedObject private var settings = SettingsService.shared
     @ObservedObject private var virtualDisplayService = VirtualDisplayService.shared
     @State private var expandedDisplayIDs: Set<CGDirectDisplayID> = []
-    @State private var showArrangement: Bool = false
     @State private var showVirtualDisplays: Bool = false
     @State private var showAutoBrightness: Bool = false
     @State private var showSettings: Bool = false
@@ -120,26 +119,6 @@ struct MenuBarView: View {
                     .padding(.vertical, 2)
 
                 PresetListView()
-
-                // 排列显示器 section (Phase 4)
-                if visibleDisplays.count > 1 {
-                    Divider()
-                        .opacity(0.3)
-                        .padding(.vertical, 2)
-
-                    ExpandableRow(
-                        icon: "rectangle.3.offgrid",
-                        iconColor: .blue,
-                        label: "Arrange Displays",
-                        isExpanded: $showArrangement
-                    )
-
-                    if showArrangement {
-                        ArrangementView()
-                            .environmentObject(displayManager)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                }
 
                 Divider()
                     .opacity(0.3)
