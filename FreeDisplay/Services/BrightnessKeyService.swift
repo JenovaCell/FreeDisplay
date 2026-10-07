@@ -149,7 +149,7 @@ final class BrightnessKeyService: @unchecked Sendable {
         // Re-enable the tap if the system disabled it (e.g. after a timeout).
         if type.rawValue == CGEventType.tapDisabledByTimeout.rawValue ||
            type.rawValue == CGEventType.tapDisabledByUserInput.rawValue {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 if let tap = self.eventTap {
                     CGEvent.tapEnable(tap: tap, enable: true)
                 }

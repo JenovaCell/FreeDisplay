@@ -22,8 +22,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: FreeDisplay/FreeDisplay.entitlements
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGNING_REQUIRED: YES
-        CODE_SIGN_IDENTITY: "Apple Development"
-        DEVELOPMENT_TEAM: 29W56PHWJR
+        CODE_SIGN_IDENTITY: "-"   # ad-hoc; set your own identity + DEVELOPMENT_TEAM for distribution
         SWIFT_STRICT_CONCURRENCY: minimal
         SWIFT_OBJC_BRIDGING_HEADER: FreeDisplay/FreeDisplay-Bridging-Header.h
         GENERATE_INFOPLIST_FILE: YES
