@@ -71,32 +71,53 @@ struct VirtualDisplayView: View {
                 .padding(.bottom, 8)
             }
         }
-        .alert("Confirm Delete", isPresented: Binding(
-            get: { configToDelete != nil },
-            set: { if !$0 { configToDelete = nil } }
-        )) {
-            Button("Delete", role: .destructive) {
-                if let id = configToDelete {
-                    service.removeConfig(id: id)
-                }
-                configToDelete = nil
-            }
-            Button("Cancel", role: .cancel) {
-                configToDelete = nil
-            }
-        } message: {
-            if let id = configToDelete, service.isActive(id) {
-                Text("This virtual display is currently active and will be deactivated immediately if deleted.")
-            } else {
-                Text("Delete this virtual display configuration?")
-            }
-        }
     }
 
     // MARK: - Config Row
 
+    /// Shows the normal row, or an inline confirmation when this config is pending deletion.
+    /// (A system `.alert` can't be used here: the menu bar window dismisses itself when the
+    /// alert takes focus, so the confirmation never completes.)
     @ViewBuilder
     private func configRow(config: VirtualDisplayService.VirtualDisplayConfig) -> some View {
+        if configToDelete == config.id {
+            deleteConfirmationRow(config: config)
+        } else {
+            normalRow(config: config)
+        }
+    }
+
+    @ViewBuilder
+    private func deleteConfirmationRow(config: VirtualDisplayService.VirtualDisplayConfig) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(service.isActive(config.id)
+                 ? "\"\(config.name)\" is active and will be removed immediately."
+                 : "Delete \"\(config.name)\"?")
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Button("Cancel") { configToDelete = nil }
+                    .controlSize(.small)
+                Spacer()
+                Button("Delete") {
+                    service.removeConfig(id: config.id)
+                    configToDelete = nil
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+                .controlSize(.small)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 7)
+                .fill(Color.red.opacity(0.10))
+        )
+    }
+
+    @ViewBuilder
+    private func normalRow(config: VirtualDisplayService.VirtualDisplayConfig) -> some View {
         let active = service.isActive(config.id)
 
         HStack(spacing: 8) {
