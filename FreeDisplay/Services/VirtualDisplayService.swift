@@ -23,6 +23,16 @@ final class VirtualDisplayService: ObservableObject, @unchecked Sendable {
 
     // MARK: - Config Model
 
+    /// Pixel dimensions of an additional mode offered by a virtual display.
+    struct Resolution: Codable, Equatable, Hashable {
+        var width: Int
+        var height: Int
+    }
+
+    /// Allowed range for user-defined resolutions / refresh rates.
+    static let validSizeRange = 320...8192
+    static let validRefreshRange = 24.0...240.0
+
     struct VirtualDisplayConfig: Codable, Identifiable, Equatable {
         let id: UUID
         var name: String
@@ -31,9 +41,13 @@ final class VirtualDisplayService: ObservableObject, @unchecked Sendable {
         var refreshRate: Double
         var hiDPI: Bool
         var autoCreate: Bool
+        /// Extra user-defined resolutions offered alongside the primary one.
+        /// Optional so configs saved by earlier versions still decode.
+        var extraModes: [Resolution]?
 
         init(id: UUID = UUID(), name: String, width: Int, height: Int,
-             refreshRate: Double = 60.0, hiDPI: Bool = true, autoCreate: Bool = true) {
+             refreshRate: Double = 60.0, hiDPI: Bool = true, autoCreate: Bool = true,
+             extraModes: [Resolution]? = nil) {
             self.id = id
             self.name = name
             self.width = width
@@ -41,6 +55,7 @@ final class VirtualDisplayService: ObservableObject, @unchecked Sendable {
             self.refreshRate = refreshRate
             self.hiDPI = hiDPI
             self.autoCreate = autoCreate
+            self.extraModes = extraModes
         }
     }
 
@@ -82,14 +97,23 @@ final class VirtualDisplayService: ObservableObject, @unchecked Sendable {
 
         // Step 1-2: Build descriptor + create CGVirtualDisplay ON MAIN ACTOR.
         // CGVirtualDisplay(descriptor:) requires the main thread (returns nil from background).
+        // The primary resolution plus any user-defined extras, de-duplicated.
+        var resolutions = [Resolution(width: w, height: h)]
+        for extra in config.extraModes ?? [] where !resolutions.contains(extra) {
+            resolutions.append(extra)
+        }
+        // The descriptor must be able to hold the largest mode.
+        let maxW = resolutions.map(\.width).max() ?? w
+        let maxH = resolutions.map(\.height).max() ?? h
+
         let descriptor = CGVirtualDisplayDescriptor()
         let ppi: Double = 110.0
         descriptor.sizeInMillimeters = CGSize(
-            width: Double(w) / ppi * 25.4,
-            height: Double(h) / ppi * 25.4
+            width: Double(maxW) / ppi * 25.4,
+            height: Double(maxH) / ppi * 25.4
         )
-        descriptor.maxPixelsWide = UInt32(w)
-        descriptor.maxPixelsHigh = UInt32(h)
+        descriptor.maxPixelsWide = UInt32(maxW)
+        descriptor.maxPixelsHigh = UInt32(maxH)
         descriptor.name = "FreeDisplay Virtual"
         descriptor.vendorID = 0xEEEE  // non-zero required — 0 causes CGVirtualDisplay(descriptor:) to return nil
         descriptor.productID = 0x0001
@@ -105,22 +129,18 @@ final class VirtualDisplayService: ObservableObject, @unchecked Sendable {
         settings.hiDPI = hiDPI
 
         var modes: [CGVirtualDisplayMode] = []
-        let refreshRates: [Double] = [75.0, 60.0, 50.0]
-        for rate in refreshRates {
-            modes.append(CGVirtualDisplayMode(width: UInt(w), height: UInt(h), refreshRate: rate))
+        var seen = Set<String>()
+        func addMode(_ mw: Int, _ mh: Int, _ rate: Double) {
+            guard mw >= 1, mh >= 1, seen.insert("\(mw)x\(mh)@\(rate)").inserted else { return }
+            modes.append(CGVirtualDisplayMode(width: UInt(mw), height: UInt(mh), refreshRate: rate))
         }
-        if hiDPI {
-            let hw = w / 2, hh = h / 2
-            if hw >= 1, hh >= 1 {
-                for rate in refreshRates {
-                    modes.append(CGVirtualDisplayMode(width: UInt(hw), height: UInt(hh), refreshRate: rate))
-                }
-            }
-            let qw = w / 4, qh = h / 4
-            if qw >= 1, qh >= 1 {
-                for rate in refreshRates {
-                    modes.append(CGVirtualDisplayMode(width: UInt(qw), height: UInt(qh), refreshRate: rate))
-                }
+        // The configured refresh rate first, then the usual alternatives.
+        let refreshRates: [Double] = [config.refreshRate, 75.0, 60.0, 50.0]
+        for res in resolutions {
+            for rate in refreshRates { addMode(res.width, res.height, rate) }
+            if hiDPI {
+                for rate in refreshRates { addMode(res.width / 2, res.height / 2, rate) }
+                for rate in refreshRates { addMode(res.width / 4, res.height / 4, rate) }
             }
         }
         settings.modes = modes

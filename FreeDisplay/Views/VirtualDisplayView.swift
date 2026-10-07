@@ -108,7 +108,7 @@ struct VirtualDisplayView: View {
                 Text(config.name)
                     .font(.body)
                     .lineLimit(1)
-                Text("\(config.width)×\(config.height)\(config.hiDPI ? " · HiDPI" : "") · \(Int(config.refreshRate))Hz")
+                Text("\(config.width)×\(config.height)\(config.hiDPI ? " · HiDPI" : "") · \(Int(config.refreshRate))Hz\(config.extraModes.map { " · +\($0.count) more" } ?? "")")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -164,12 +164,21 @@ struct CreateVirtualDisplayForm: View {
     @State private var selectedPreset: Int = 0
     @State private var hiDPI: Bool = true
     @State private var autoCreate: Bool = true
+    @State private var customWidth: String = "1728"
+    @State private var customHeight: String = "1117"
+    @State private var customRefresh: String = "60"
+    @State private var extraModesText: String = ""
+    @State private var validationError: String?
 
     private let presets: [(label: String, width: Int, height: Int)] = [
         ("1920×1080 (FHD)", 1920, 1080),
         ("2560×1440 (QHD)", 2560, 1440),
         ("3840×2160 (4K)",  3840, 2160),
     ]
+
+    /// Picker tag for the "Custom…" entry (one past the built-in presets).
+    private var customTag: Int { presets.count }
+    private var isCustom: Bool { selectedPreset == customTag }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -194,11 +203,48 @@ struct CreateVirtualDisplayForm: View {
                     ForEach(presets.indices, id: \.self) { i in
                         Text(presets[i].label).tag(i)
                     }
+                    Text("Custom…").tag(customTag)
                 }
                 .pickerStyle(.menu)
                 .font(.caption)
                 .labelsHidden()
                 .help("Choose virtual display resolution")
+            }
+
+            // Custom width × height @ refresh rate
+            if isCustom {
+                HStack(spacing: 4) {
+                    TextField("Width", text: $customWidth)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                    Text("×").font(.caption).foregroundColor(.secondary)
+                    TextField("Height", text: $customHeight)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                    Text("@").font(.caption).foregroundColor(.secondary)
+                    TextField("Hz", text: $customRefresh)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                        .frame(width: 44)
+                }
+                .help("Width × height in pixels @ refresh rate (Hz)")
+            }
+
+            // Additional resolutions offered on the same display
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Extra resolutions (optional)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                TextField("e.g. 1440x900, 2048x1152", text: $extraModesText)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption)
+                    .help("Comma-separated WIDTHxHEIGHT list. These appear in the display's mode list so you can switch between them.")
+            }
+
+            if let validationError {
+                Text(validationError)
+                    .font(.caption2)
+                    .foregroundColor(.red)
             }
 
             // HiDPI toggle
@@ -251,16 +297,68 @@ struct CreateVirtualDisplayForm: View {
         .padding(.vertical, 4)
     }
 
+    /// Parses "1440x900, 2048×1152" into resolutions. Returns nil if any entry is invalid.
+    private func parseExtraModes(_ text: String) -> [VirtualDisplayService.Resolution]? {
+        var result: [VirtualDisplayService.Resolution] = []
+        let entries = text.split(whereSeparator: { $0 == "," || $0 == ";" || $0 == "\n" })
+        for entry in entries {
+            let parts = entry
+                .lowercased()
+                .replacingOccurrences(of: "×", with: "x")
+                .split(separator: "x")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count == 2, let w = Int(parts[0]), let h = Int(parts[1]),
+                  VirtualDisplayService.validSizeRange.contains(w),
+                  VirtualDisplayService.validSizeRange.contains(h)
+            else { return nil }
+            result.append(.init(width: w, height: h))
+        }
+        return result
+    }
+
     private func confirm() {
         guard !isCreating else { return }
-        let preset = presets[selectedPreset]
+
+        let width: Int
+        let height: Int
+        var refresh = 60.0
+        if isCustom {
+            guard let w = Int(customWidth.trimmingCharacters(in: .whitespaces)),
+                  let h = Int(customHeight.trimmingCharacters(in: .whitespaces)),
+                  VirtualDisplayService.validSizeRange.contains(w),
+                  VirtualDisplayService.validSizeRange.contains(h)
+            else {
+                let r = VirtualDisplayService.validSizeRange
+                validationError = "Width and height must be whole numbers from \(r.lowerBound) to \(r.upperBound)."
+                return
+            }
+            guard let hz = Double(customRefresh.trimmingCharacters(in: .whitespaces)),
+                  VirtualDisplayService.validRefreshRange.contains(hz)
+            else {
+                validationError = "Refresh rate must be between 24 and 240 Hz."
+                return
+            }
+            width = w; height = h; refresh = hz
+        } else {
+            width = presets[selectedPreset].width
+            height = presets[selectedPreset].height
+        }
+
+        guard let extras = parseExtraModes(extraModesText) else {
+            let r = VirtualDisplayService.validSizeRange
+            validationError = "Extra resolutions must look like 1440x900, 2048x1152 (\(r.lowerBound)–\(r.upperBound) px)."
+            return
+        }
+        validationError = nil
+
         let config = VirtualDisplayService.VirtualDisplayConfig(
             name: name.isEmpty ? "Virtual Display" : name,
-            width: preset.width,
-            height: preset.height,
-            refreshRate: 60,
+            width: width,
+            height: height,
+            refreshRate: refresh,
             hiDPI: hiDPI,
-            autoCreate: autoCreate
+            autoCreate: autoCreate,
+            extraModes: extras.isEmpty ? nil : extras
         )
         onConfirm(config)
     }
